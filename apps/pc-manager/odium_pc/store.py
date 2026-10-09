@@ -32,6 +32,16 @@ class PackageStore:
                 state TEXT NOT NULL DEFAULT 'review'
             )
         """)
+        self.db.execute("""
+            CREATE TABLE IF NOT EXISTS staged_packages(
+                path TEXT NOT NULL,
+                repo_id TEXT NOT NULL,
+                sha256 TEXT NOT NULL,
+                remote_path TEXT NOT NULL,
+                revision TEXT NOT NULL,
+                PRIMARY KEY(path,repo_id)
+            )
+        """)
         self.db.commit()
 
     def close(self) -> None:
@@ -126,6 +136,35 @@ class PackageStore:
                         (row["path"],))
             results.append((row["path"], status))
         return results
+
+
+    def record_staged(self, path: str, *, repo_id: str, revision: str,
+                      remote_path: str, digest: str) -> None:
+        """Record a remote blob only after a pinned hash/size verification."""
+        from .catalog import CatalogError
+        row = self.db.execute("SELECT * FROM packages WHERE path=?",
+                              (path,)).fetchone()
+        if (row is None or not row["approved"] or not row["rights_confirmed"]
+                or row["sha256"] != digest):
+            raise CatalogError("Refuse staging for unapproved or changed source")
+        with self.db:
+            self.db.execute("""
+                INSERT INTO staged_packages(path,repo_id,sha256,remote_path,revision)
+                VALUES(?,?,?,?,?)
+                ON CONFLICT(path,repo_id) DO UPDATE SET
+                  sha256=excluded.sha256,
+                  remote_path=excluded.remote_path,
+                  revision=excluded.revision
+            """, (path, repo_id, digest, remote_path, revision))
+
+    def staged_rows(self, repo_id: str) -> dict[str, dict[str, str]]:
+        """Only return staged blobs matching currently approved source fingerprints."""
+        records = self.db.execute("""
+            SELECT s.* FROM staged_packages s
+            JOIN packages p ON s.path=p.path AND s.sha256=p.sha256
+            WHERE s.repo_id=? AND p.approved=1 AND p.rights_confirmed=1
+        """, (repo_id,))
+        return {f"sha256:{r['sha256']}": dict(r) for r in records}
 
     def export_draft(self) -> dict[str, Any]:
         games: dict[str, dict[str, Any]] = {}

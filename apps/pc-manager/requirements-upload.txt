@@ -1,0 +1,2 @@
+# The hub client includes integrated Xet transfer support.
+huggingface_hub>=0.36,<2

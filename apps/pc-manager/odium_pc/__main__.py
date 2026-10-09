@@ -1,4 +1,4 @@
-"""Offline PC Manager milestone CLI. Nothing uploads without a later publishing step."""
+"""PC Manager CLI: local review, optional explicit HF staging (never auto-publishes)."""
 
 from __future__ import annotations
 
@@ -30,6 +30,15 @@ def run() -> None:
     sub.add_parser("recover", help="Re-hash approved packages after interruptions")
     p_export = sub.add_parser("export", help="Export offline non-installable draft")
     p_export.add_argument("--out", required=True)
+    p_plan = sub.add_parser("upload-plan", help="Show remote paths; no network upload")
+    p_plan.add_argument("--repo", required=True, help="Public owner/dataset on Hugging Face")
+    p_upload = sub.add_parser("upload-stage", help="Explicitly upload approved PKGs, NOT catalog")
+    p_upload.add_argument("--repo", required=True)
+    p_upload.add_argument("--confirm-public", action="store_true",
+                          help="Acknowledge uploads are public, authorized and irreversible")
+    p_ready = sub.add_parser("export-ready", help="Export local catalog with pinned verified URLs")
+    p_ready.add_argument("--repo", required=True)
+    p_ready.add_argument("--out", required=True)
     args = parser.parse_args()
     with PackageStore(args.db) as store:
         if args.command == "scan":
@@ -52,6 +61,26 @@ def run() -> None:
         elif args.command == "recover":
             for path, status in store.recover_approved():
                 print(f"{status}: {path}")
+        elif args.command == "upload-plan":
+            from .hf_stage import prepare_tasks
+            for task in prepare_tasks(store, args.repo):
+                print(f"{task.size_bytes:>15} bytes {task.sha256} "
+                      f"{task.local_path} -> {task.remote_path}")
+            print("DRY RUN ONLY: Nothing uploaded.")
+        elif args.command == "upload-stage":
+            if not args.confirm_public:
+                parser.error("Explicit --confirm-public required before uploading")
+            from .hf_stage import stage_approved
+            staged = stage_approved(store, args.repo, on_progress=print)
+            print(f"VERIFIED {len(staged)} package(s); catalog was NOT published.")
+        elif args.command == "export-ready":
+            from .hf_stage import create_ready_catalog
+            catalog = create_ready_catalog(store, args.repo)
+            out = Path(args.out)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps(catalog, indent=2, ensure_ascii=False) + "\n",
+                           encoding="utf-8")
+            print(f"Locally saved {out}. NOT published online.")
         elif args.command == "export":
             catalog = store.export_draft()
             out = Path(args.out)
