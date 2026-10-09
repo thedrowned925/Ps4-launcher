@@ -82,6 +82,7 @@ class MainWindow(QMainWindow):
         self.allow_quit = False
         self.setWindowTitle("Odium PC Manager — Package Review")
         self.resize(1270, 760)
+        self.setAcceptDrops(True)
         self.setMinimumSize(900, 600)
         self.setStyleSheet(STYLE)
 
@@ -92,7 +93,7 @@ class MainWindow(QMainWindow):
         heading = QLabel("ODIUM")
         heading.setObjectName("heading")
         root.addWidget(heading)
-        description = QLabel("PC Manager  /  Offline package review — nothing is uploaded")
+        description = QLabel("PC Manager  /  Drag PKGs here or select Import  /  Nothing uploads automatically")
         description.setObjectName("subheading")
         root.addWidget(description)
 
@@ -237,10 +238,31 @@ class MainWindow(QMainWindow):
         self.depends.setText(", ".join(json.loads(row["required_package_ids"])))
         self.rights.setChecked(bool(row["rights_confirmed"]))
 
+    def dragEnterEvent(self, event) -> None:
+        if self.scan_thread is None and event.mimeData().hasUrls() and any(
+                u.isLocalFile() and u.toLocalFile().lower().endswith(".pkg")
+                for u in event.mimeData().urls()):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event) -> None:
+        files = [u.toLocalFile() for u in event.mimeData().urls()
+                 if u.isLocalFile() and u.toLocalFile().lower().endswith(".pkg")]
+        if files and self.scan_thread is None:
+            event.acceptProposedAction()
+            self.start_scans(files)
+        else:
+            event.ignore()
+
     def import_files(self) -> None:
         files, _ = QFileDialog.getOpenFileNames(
             self, "Select PS4 PKG files", "", "PS4 Package (*.pkg)")
-        if not files:
+        if files:
+            self.start_scans(files)
+
+    def start_scans(self, files: list[str]) -> None:
+        if not files or self.scan_thread is not None:
             return
         self.import_button.setEnabled(False)
         self.status.setText(f"Scanning {len(files)} file(s); UI remains responsive.")
