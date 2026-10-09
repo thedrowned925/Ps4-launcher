@@ -1,0 +1,32 @@
+name: Windows PC Manager alpha
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/pc-manager/**'
+      - '.github/workflows/windows-alpha.yml'
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install GUI and bundler
+        run: python -m pip install --disable-pip-version-check -r apps/pc-manager/requirements-gui.txt 'pyinstaller>=6.6'
+      - name: Build Windows GUI (alpha)
+        run: python -m PyInstaller --noconfirm --clean --onedir --windowed --name OdiumPCManager --paths apps/pc-manager apps/pc-manager/launch_gui.py
+      - name: Check bundle exists
+        shell: pwsh
+        run: if (!(Test-Path 'dist/OdiumPCManager/OdiumPCManager.exe')) { throw 'Alpha exe missing' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OdiumPCManager-Windows-alpha
+          path: dist/OdiumPCManager/
+          if-no-files-found: error
+          retention-days: 14
+# An unsigned alpha program, not a PS4 PKG; run on Windows only.
