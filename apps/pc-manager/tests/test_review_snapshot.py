@@ -1,6 +1,7 @@
 """Regression: scanning alone must produce useful report without publication approval."""
 
 import json
+from contextlib import closing
 import sqlite3
 import tempfile
 import unittest
@@ -51,7 +52,7 @@ class ReviewReportTests(unittest.TestCase):
 
     def test_migrate_old_database_preserving_review_records(self):
         db = self.root / "review.sqlite3"
-        with sqlite3.connect(db) as con:
+        with closing(sqlite3.connect(db)) as con:
             con.execute("""CREATE TABLE packages(
                 path TEXT PRIMARY KEY, filename TEXT NOT NULL,
                 size_bytes INTEGER NOT NULL, mtime_ns INTEGER NOT NULL,
@@ -64,8 +65,9 @@ class ReviewReportTests(unittest.TestCase):
             )""")
             con.execute("""INSERT INTO packages
                 (path,filename,size_bytes,mtime_ns,sha256,guessed_kind)
-                VALUES(?,?,?,?,?,?)""", (str(self.pkg), self.pkg.name, 10, 0,
+                VALUES(?,?,?,?,?,?)""", (str(self.pkg.resolve()), self.pkg.name, 10, 0,
                                           "a" * 64, "base"))
+            con.commit()
         with PackageStore(db) as store:
             report = store.export_review_snapshot()
             self.assertEqual(len(report["packages"]), 1)
