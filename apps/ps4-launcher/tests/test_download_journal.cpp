@@ -21,7 +21,7 @@ int main() {
     assert(restored.VerifiedBytes() == 17);
     assert(restored.IsVerified(0) && restored.IsVerified(2));
 
-    auto fails = [&](std::string value, const std::string& name = digest) {
+    auto fails = [&](std::string value, const std::string& name) {
         bool thrown = false;
         try {
             (void)odium::DownloadJournal::Deserialize(value, name, 33, 16);
@@ -32,12 +32,12 @@ int main() {
     };
     auto corrupted = bytes;
     corrupted[corrupted.size() - 5] ^= 0x1;
-    fails(corrupted);
-    fails(bytes.substr(0, bytes.size() - 1));
+    fails(corrupted, digest);
+    fails(bytes.substr(0, bytes.size() - 1), digest);
     fails(bytes, std::string(64, 'b'));
     auto forged = bytes;
     forged[0] = 'X';
-    fails(forged);
+    fails(forged, digest);
 
     // No chunk can be marked without an in-range index.
     bool out_of_range = false;
