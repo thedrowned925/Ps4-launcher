@@ -1,0 +1,38 @@
+name: Host tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  pc-core:
+    name: PC core
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Run catalog tests
+        env:
+          PYTHONPATH: apps/pc-manager
+        run: python -m unittest discover -s apps/pc-manager/tests -v
+  transfer-core:
+    name: PS4 portable core (HOST only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S apps/ps4-launcher -B build-host -DCMAKE_BUILD_TYPE=Debug
+      - name: Build
+        run: cmake --build build-host --parallel
+      - name: Test
+        run: ctest --test-dir build-host --output-on-failure
+# No OpenOrbis on CI: does NOT build or publish a PS4 .pkg.

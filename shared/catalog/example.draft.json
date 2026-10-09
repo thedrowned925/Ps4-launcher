@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "published": false,
+  "games": [
+    {
+      "game_id": "authorized-demo",
+      "title": "Authorized Demo",
+      "packages": [
+        {
+          "package_id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "base",
+          "filename": "example.pkg",
+          "size_bytes": 1024,
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": "1.00",
+          "target_firmware": null,
+          "required_package_ids": []
+        }
+      ]
+    }
+  ]
+}
