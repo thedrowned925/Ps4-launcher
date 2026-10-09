@@ -20,6 +20,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
+      - name: Syntax check all PC modules (including optional Qt UI)
+        run: python -m compileall -q apps/pc-manager/odium_pc
       - name: Run catalog tests
         env:
           PYTHONPATH: apps/pc-manager
