@@ -101,7 +101,10 @@ class MainWindow(QMainWindow):
         self.import_button.setObjectName("primary")
         self.import_button.clicked.connect(self.import_files)
         controls.addWidget(self.import_button)
-        export_button = QPushButton("Export draft catalog")
+        review_button = QPushButton("Export review report")
+        review_button.clicked.connect(self.export_review_snapshot)
+        controls.addWidget(review_button)
+        export_button = QPushButton("Export approved catalog draft")
         export_button.clicked.connect(self.export_draft)
         controls.addWidget(export_button)
         controls.addStretch()
@@ -194,7 +197,9 @@ class MainWindow(QMainWindow):
         for i, data in enumerate(rows):
             values = [data["filename"], data["guessed_kind"] + "?",
                       f'{data["size_bytes"] / (1024 ** 3):.3f}',
-                      data["state"], data["game_title"] or "Needs review"]
+                      data["state"],
+                      data["game_title"] or data["suggested_title"] or
+                      data["title_id"] or "Needs review"]
             for column, value in enumerate(values):
                 item = QTableWidgetItem(value)
                 item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
@@ -218,11 +223,16 @@ class MainWindow(QMainWindow):
         row = self.selected_data()
         if row is None:
             return
-        self.filename.setText(row["filename"] + "\nSHA-256: " + row["sha256"])
-        self.game_id.setText(row["game_id"] or "")
-        self.game_title.setText(row["game_title"] or "")
+        hints = [row["filename"], "SHA-256: " + row["sha256"]]
+        if row["content_id"]:
+            hints.append("Content ID: " + row["content_id"])
+        if row["metadata_note"]:
+            hints.append("Metadata: " + row["metadata_note"])
+        self.filename.setText("\n".join(hints))
+        self.game_id.setText(row["game_id"] or row["title_id"] or "")
+        self.game_title.setText(row["game_title"] or row["suggested_title"] or "")
         self.kind.setCurrentText(row["kind"] or row["guessed_kind"])
-        self.version.setText(row["version"] or "1.00")
+        self.version.setText(row["version"] or row["suggested_version"] or "1.00")
         self.firmware.setText(row["target_firmware"] or "")
         self.depends.setText(", ".join(json.loads(row["required_package_ids"])))
         self.rights.setChecked(bool(row["rights_confirmed"]))
@@ -279,11 +289,40 @@ class MainWindow(QMainWindow):
         except (ValueError, OSError) as exc:
             QMessageBox.warning(self, "Cannot approve", str(exc))
 
+    def export_review_snapshot(self) -> None:
+        """Every scan including unapproved entries, never a publishable catalog."""
+        report = self.store.export_review_snapshot()
+        if not report["packages"]:
+            QMessageBox.information(self, "Nothing scanned",
+                                    "Import a PKG before exporting a review report.")
+            return
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "Save local review report", "odium-review-report.json", "JSON (*.json)")
+        if not filename:
+            return
+        try:
+            Path(filename).write_text(json.dumps(
+                report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        except OSError as exc:
+            QMessageBox.warning(self, "Cannot save review report", str(exc))
+            return
+        self.status.setText(
+            f"Review report exported: {len(report['packages'])} file(s). "
+            "No approval or network upload.")
+
     def export_draft(self) -> None:
         try:
             catalog = self.store.export_draft()
         except ValueError as exc:
             QMessageBox.warning(self, "Invalid dependencies", str(exc))
+            return
+        if not catalog["games"] or not any(g["packages"] for g in catalog["games"]):
+            QMessageBox.information(
+                self, "No approved packages",
+                "The approved catalog is empty because no packages were approved. "
+                "Use 'Export review report' to export all scanned PKGs without "
+                "approving them. No distribution confirmation is required "
+                "for a local review report.")
             return
         filename, _ = QFileDialog.getSaveFileName(
             self, "Save offline catalog draft", "catalog-draft.json", "JSON (*.json)")

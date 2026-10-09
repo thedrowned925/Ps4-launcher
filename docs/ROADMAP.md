@@ -7,7 +7,8 @@
 - [x] Host-native C++ range planning baseline with tests.
 - [x] Alpha Windows GUI: bulk import, read-only analysis, editable metadata and offline draft export.
 - [ ] Production premium Windows UI: full dependency editor, PKG metadata reader, installer orchestration.
-- [ ] Real PS4 PKG PARAM.SFO parser and safer identity checks.
+- [x] Bounded read-only Content ID/Title ID and plaintext PARAM.SFO metadata hints (must be manually verified).
+- [ ] Validate PKG metadata parser with real homebrew samples, expand firmware flags and robust signature checks.
 - [ ] IGDB and artwork acquisition on PC (credential protection, manual override and license metadata).
 - [x] HF CLI stage: explicit public-dataset upload of approved PKGs + pinned ETag/size verification.
 - [ ] Atomic catalog publisher, remote catalog diff/merge, tray upload worker and startup resume.

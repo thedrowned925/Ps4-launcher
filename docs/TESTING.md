@@ -7,9 +7,9 @@ Important: use only your own or explicitly authorized homebrew PKGs. Never uploa
 1. Clone or download this GitHub repository on a Windows PC with Python 3.11+.
 2. Double-click scripts/start-pc-manager.bat. It creates an isolated .venv and installs PySide6 on the first run.
 3. Click Import PKG files; select a SMALL authorized homebrew .pkg. No files are modified or uploaded.
-4. Review title, Game ID, type (base/update/dlc/backport), version, firmware and optional sha256 package dependencies.
-5. Only if you possess redistribution rights, check the rights confirmation and click Approve reviewed metadata.
-6. Click Export draft catalog; ensure the JSON shows published=false.
+4. Review suggested Title ID/Content ID and, when readable, `PARAM.SFO` title/version. Confirm game ID, package type, firmware and optional sha256 dependencies. The suggestions are untrusted; some PKGs have encrypted or missing SFO.
+5. Without approving anything, click **Export review report**. Open JSON and verify it contains `packages` with the scanned filenames and `published: false`.
+6. Now (only for authorized redistributable homebrew) check rights confirmation and click **Approve reviewed metadata**. Click **Export approved catalog draft** and verify JSON contains `games` and `published: false`.
 7. Minimize/close to Windows tray and restore from tray icon.
 8. Share any crash messages, GUI screenshots and which step failed. Do NOT share credentials.
 

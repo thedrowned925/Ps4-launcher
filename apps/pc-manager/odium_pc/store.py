@@ -42,6 +42,12 @@ class PackageStore:
                 PRIMARY KEY(path,repo_id)
             )
         """)
+        # Upgrade existing milestone 0.1 user databases in-place.
+        columns = {r[1] for r in self.db.execute("PRAGMA table_info(packages)")}
+        for column in ("content_id", "title_id", "suggested_title",
+                       "suggested_version", "metadata_note"):
+            if column not in columns:
+                self.db.execute(f"ALTER TABLE packages ADD COLUMN {column} TEXT")
         self.db.commit()
 
     def close(self) -> None:
@@ -57,14 +63,21 @@ class PackageStore:
         with self.db:
             self.db.execute("""
                 INSERT INTO packages
-                    (path,filename,size_bytes,mtime_ns,sha256,guessed_kind)
-                VALUES(?,?,?,?,?,?)
+                    (path,filename,size_bytes,mtime_ns,sha256,guessed_kind,
+                     content_id,title_id,suggested_title,suggested_version,
+                     metadata_note)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(path) DO UPDATE SET
                     filename=excluded.filename,
                     size_bytes=excluded.size_bytes,
                     mtime_ns=excluded.mtime_ns,
                     sha256=excluded.sha256,
                     guessed_kind=excluded.guessed_kind,
+                    content_id=excluded.content_id,
+                    title_id=excluded.title_id,
+                    suggested_title=excluded.suggested_title,
+                    suggested_version=excluded.suggested_version,
+                    metadata_note=excluded.metadata_note,
                     approved=CASE WHEN packages.sha256=excluded.sha256
                         THEN packages.approved ELSE 0 END,
                     rights_confirmed=CASE WHEN packages.sha256=excluded.sha256
@@ -72,7 +85,9 @@ class PackageStore:
                     state=CASE WHEN packages.sha256=excluded.sha256
                         THEN packages.state ELSE 'review' END
             """, (probe.path, probe.filename, probe.size_bytes,
-                  probe.mtime_ns, probe.sha256, probe.guessed_kind))
+                  probe.mtime_ns, probe.sha256, probe.guessed_kind,
+                  probe.content_id, probe.title_id, probe.title,
+                  probe.app_version, probe.metadata_note))
 
     def rows(self) -> list[dict[str, Any]]:
         return [dict(row) for row in self.db.execute(
@@ -165,6 +180,41 @@ class PackageStore:
             WHERE s.repo_id=? AND p.approved=1 AND p.rights_confirmed=1
         """, (repo_id,))
         return {f"sha256:{r['sha256']}": dict(r) for r in records}
+
+    def export_review_snapshot(self) -> dict[str, Any]:
+        """Export ALL scanned packages as non-publishable local review data.
+
+        This is intentionally a different document shape than the PS4 catalog.
+        Human approval and distribution-rights confirmation remain independent.
+        """
+        items: list[dict[str, Any]] = []
+        for row in self.rows():
+            approved = bool(row["approved"] and row["rights_confirmed"])
+            items.append({
+                "filename": row["filename"],
+                "size_bytes": row["size_bytes"],
+                "sha256": row["sha256"],
+                "suggested_game_id": row["title_id"],
+                "suggested_title": row["suggested_title"],
+                "content_id": row["content_id"],
+                "suggested_version": row["suggested_version"],
+                "suggested_kind": row["guessed_kind"],
+                "metadata_note": row["metadata_note"],
+                "review_state": row["state"],
+                "approved_for_staging": approved,
+                "reviewed": {
+                    "game_id": row["game_id"], "game_title": row["game_title"],
+                    "kind": row["kind"], "version": row["version"],
+                    "target_firmware": row["target_firmware"],
+                    "required_package_ids": json.loads(row["required_package_ids"])
+                } if row["game_id"] else None
+            })
+        return {
+            "review_snapshot_version": 1,
+            "published": False,
+            "warning": "REVIEW ONLY. This is not a PS4-installable catalog.",
+            "packages": items
+        }
 
     def export_draft(self) -> dict[str, Any]:
         games: dict[str, dict[str, Any]] = {}

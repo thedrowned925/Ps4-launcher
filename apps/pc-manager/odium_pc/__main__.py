@@ -28,6 +28,9 @@ def run() -> None:
     p_approve.add_argument("--requires", action="append", default=[], help="sha256:<64 hex>")
     p_approve.add_argument("--rights-confirmed", action="store_true")
     sub.add_parser("recover", help="Re-hash approved packages after interruptions")
+    p_review = sub.add_parser("export-review",
+                              help="Save all scanned PKGs, including unapproved ones")
+    p_review.add_argument("--out", required=True)
     p_export = sub.add_parser("export", help="Export offline non-installable draft")
     p_export.add_argument("--out", required=True)
     p_plan = sub.add_parser("upload-plan", help="Show remote paths; no network upload")
@@ -81,8 +84,17 @@ def run() -> None:
             out.write_text(json.dumps(catalog, indent=2, ensure_ascii=False) + "\n",
                            encoding="utf-8")
             print(f"Locally saved {out}. NOT published online.")
+        elif args.command == "export-review":
+            report = store.export_review_snapshot()
+            out = Path(args.out)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+                           encoding="utf-8")
+            print(f"Saved {len(report['packages'])} scanned PKG(s) in local review report.")
         elif args.command == "export":
             catalog = store.export_draft()
+            if not any(g["packages"] for g in catalog["games"]):
+                parser.error("No approved packages. Use export-review for pending scans.")
             out = Path(args.out)
             out.parent.mkdir(parents=True, exist_ok=True)
             out.write_text(json.dumps(catalog, indent=2, ensure_ascii=False) + "\n",

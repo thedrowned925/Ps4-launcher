@@ -2,16 +2,16 @@
 
 Windows package catalog manager + planned native PlayStation 4 (GoldHEN 9.00) launcher.
 
-**Status: milestone 0.2 — Windows GUI/CLI review alpha, explicit Hugging Face package staging and portable transfer planner.** There is no PS4-installable PKG, tested console UI, or published online game catalog yet. No PKG has yet been built or tested on console.
+**Status: milestone 0.3 — read-only PKG metadata hints, Windows scan review reports, opt-in Hugging Face package staging, and portable transfer planner.** There is no PS4-installable PKG, tested console UI, or published online game catalog yet. No PKG has yet been built or tested on console.
 
 ## Components
 
 | Component | Technology | Current state |
 |---|---|---|
-| PC Manager core | Python 3.11+, standard library | PKG header check, streamed SHA-256, SQLite review/approval, draft catalog export |
+| PC Manager core | Python 3.11+, standard library | PKG header/SFO hints, streamed SHA-256, SQLite review/approval, separate review report and approved catalog draft |
 | PS4 transfer core | Portable C++17 | Range planner + host-native tests; not wired to native PS4 networking |
 | Shared catalog | JSON specification | Validated package dependencies, firmware metadata, immutable IDs |
-| Windows desktop UI | PySide6 | Alpha: batch import, local approval, draft export; NO upload |
+| Windows desktop UI | PySide6 | Alpha: batch import, suggested metadata, review report and approved catalog draft; NO GUI upload |
 | Hugging Face upload staging | huggingface_hub + Xet | CLI opt-in upload, hash/size verification and pinned revision; NO catalog publication |
 | PS4 app/PKG | Planned: OpenOrbis | Not implemented |
 
