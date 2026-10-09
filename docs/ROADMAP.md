@@ -9,7 +9,8 @@
 - [ ] Production premium Windows UI: full dependency editor, PKG metadata reader, installer orchestration.
 - [ ] Real PS4 PKG PARAM.SFO parser and safer identity checks.
 - [ ] IGDB and artwork acquisition on PC (credential protection, manual override and license metadata).
-- [ ] HF publisher with verified uploads, atomic catalog revision, safe retry and Xet resume.
+- [x] HF CLI stage: explicit public-dataset upload of approved PKGs + pinned ETag/size verification.
+- [ ] Atomic catalog publisher, remote catalog diff/merge, tray upload worker and startup resume.
 - [ ] Tray, startup recovery and worker queue; accurate status/throughput.
 - [ ] PS4 renderer, input/audio/haptics, local game inventory and launch integration.
 - [ ] PS4 HTTP range download with bounded HDD scheduler and durable chunk journal.
